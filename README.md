@@ -1,17 +1,18 @@
 # pokesprite
 
-Inspired by [msikma/pokesprite](https://github.com/msikma/pokesprite), this repo
-is a simplified version that generates a spritesheet and stylesheet that are
-meant to be used for [PokedexTracker](https://pokedextracker.com).
+Inspired by [msikma/pokesprite](https://github.com/msikma/pokesprite) and forked from [pokedextracker/pokesprite](https://github.com/pokedextracker/pokesprite), this repo
+is a variation of the same ideas that generates a spritesheet and stylesheet that are
+meant to be used for [Pokedex0](https://pokedex0.com).
 
-It currently consists of 6 scripts:
+It currently consists of 7 scripts:
 
 - `rename` - This renames icons from
   [msikma/pokesprite](https://github.com/msikma/pokesprite) to names that can be
   used by the other scripts. Only use this one if you're copying sprites from
   that repo. Read the comment at the top of the file for more info.
 - `chop` - This takes in a JSON file explaining the details of an existing
-  spritesheet, and it chops it up into individual images.
+  spritesheet, and it chops it up into individual images. It can also take an SCSS
+  file to extract sprites from a pokesprite-style spritesheet.
 - `scale` - This takes any images in the `images` directory that are greater
   than the threshold (default 100px) in either dimension (height or width) and
   either scales it by the provided factor (default 0.5) or to the set dimensions
@@ -24,11 +25,10 @@ It currently consists of 6 scripts:
 - `scss` - This uses the images in the `images` directory to generate a `.scss`
   file that lists classes with the correct positions so the spritesheet can be
   used.
-- `copy` - This takes the final outputs (the spritesheet and the `.scss` file)
-  and copies them into their appropriate location in
-  [pokedextracker/pokedextracker.com](https://github.com/pokedextracker/pokedextracker.com).
-  It assumes that this repo and that repo are both cloned in the same parent
-  directory. If that is not the case, this script will err.
+- `positions` - This reads the generated `pokesprite.scss` file and generates a
+  TypeScript file (`sprite-positions.ts`) containing a map of sprite positions
+  with width, height, and background-position data for use in web applications.
+
 
 To run any of them, it's a simple `task` command:
 
@@ -39,7 +39,13 @@ task scale
 task trim
 task spritesheet
 task scss
-task copy
+task positions
+```
+
+There's also a `build` task that runs `trim`, `spritesheet`, `scss`, and `positions` in sequence:
+
+```sh
+task build
 ```
 
 ## Setup

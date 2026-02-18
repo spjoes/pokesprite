@@ -5,13 +5,20 @@ includes:
 
 tasks:
   default:
-    desc: Run the standard set of commands to generate new outputs and copy it in the right place.
+    desc: Run the standard set of commands to generate new outputs.
     cmds:
       - task: scale
       - task: trim
       - task: spritesheet
       - task: scss
-      - task: copy
+
+  build:
+    desc: Build spritesheet and generate SCSS and TypeScript position files (trim -> spritesheet -> scss -> positions).
+    cmds:
+      - task: trim
+      - task: spritesheet
+      - task: scss
+      - task: positions
 
   rename:
     desc: Rename msikma/pokesprite icons to the names that we expect them to be in.
@@ -49,14 +56,11 @@ tasks:
     cmds:
       - go run cmd/scss/main.go
 
-  copy:
-    desc: Copy the generated spritesheet and .scss file into the pokedextracker.com repo (assuming that it was cloned right next to this repo).
+  positions:
+    desc: Generate a TypeScript sprite-positions file from the SCSS file.
+    deps: [output]
     cmds:
-      - cp output/pokesprite.png ../pokedextracker.com/public
-      - cp output/pokesprite.scss ../pokedextracker.com/app/styles
-    preconditions:
-      - test -f output/pokesprite.png
-      - test -f output/pokesprite.scss
+      - go run cmd/positions/main.go {{.CLI_ARGS}}
 
   # Helper tasks
 
