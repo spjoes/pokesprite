@@ -1,14 +1,14 @@
 // This script is used to take an existing spritesheet and chop it up into
 // individual sprites. It supports two modes:
 //
-// 1) JSON mode: Pass a .json file that describes the spritesheet (filename,
-//    columns, rows, outline, padding, and a list of Pokemon). Used for
-//    sheets like Legends: Arceus from spriters-resource.
+//  1. JSON mode: Pass a .json file that describes the spritesheet (filename,
+//     columns, rows, outline, padding, and a list of Pokemon). Used for
+//     sheets like Legends: Arceus from spriters-resource.
 //
-// 2) SCSS mode: Pass a .scss file (e.g. toExtractFrom/pokesprite.scss). The
-//    script finds pokesprite.png in the same directory and parses the SCSS
-//    for width, height, and background-position of each .pkicon rule, then
-//    extracts each sprite into ./images/ with the correct filenames.
+//  2. SCSS mode: Pass a .scss file (e.g. toExtractFrom/pokesprite.scss). The
+//     script finds pokesprite.png in the same directory and parses the SCSS
+//     for width, height, and background-position of each .pkicon rule, then
+//     extracts each sprite into ./images/ with the correct filenames.
 package main
 
 import (
@@ -172,7 +172,6 @@ func scssSelectorToFilename(parts string) string {
 	}
 	return name + ".png"
 }
-
 
 func chopFromJSON(filename string) {
 	raw, err := ioutil.ReadFile(filename)
