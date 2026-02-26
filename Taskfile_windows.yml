@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  setup:
+    cmds:
+      - winget install --id Google.Libwebp -e --source winget
+      - winget install --id OptiPNG.OptiPNG -e --source winget

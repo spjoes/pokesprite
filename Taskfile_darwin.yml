@@ -3,4 +3,4 @@ version: '3'
 tasks:
   setup:
     cmds:
-      - brew install pngcrush
+      - brew install webp optipng libavif
