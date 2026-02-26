@@ -9,15 +9,16 @@ tasks:
     cmds:
       - task: scale
       - task: trim
-      - task: spritesheet
+      - task: spritesheet:png
       - task: scss
 
   build:
-    desc: Build spritesheet and generate SCSS and TypeScript position files (trim -> spritesheet -> scss -> positions).
+    desc: Build spritesheet and generate SCSS, CSS, and TypeScript position files.
     cmds:
       - task: trim
-      - task: spritesheet
+      - task: spritesheet:png
       - task: scss
+      - task: css
       - task: positions
 
   rename:
@@ -41,20 +42,40 @@ tasks:
       - go run cmd/trim/main.go
 
   spritesheet:
-    desc: Generate a single spritesheet using the images in the images directory.
+    desc: Generate a PNG spritesheet (default task for backwards compatibility).
     deps: [output]
     cmds:
-      - go run cmd/spritesheet/main.go
-      # We could make pngcrush cleanly optional once
-      # https://github.com/go-task/task/issues/608 is fixed.
-      - pngcrush -l 9 output/pokesprite.png output/pokesprite-optimized.png
-      - mv output/pokesprite-optimized.png output/pokesprite.png
+      - task: spritesheet:png
+
+  spritesheet:png:
+    desc: Generate a PNG spritesheet using the images in the images directory.
+    deps: [output]
+    cmds:
+      - go run cmd/spritesheet/main.go -format png
+      - cmd: optipng -o7 output/pokesprite.png
+        platforms: [linux, darwin]
+        if: command -v optipng >/dev/null 2>&1
+      - cmd: optipng -o7 output/pokesprite.png
+        platforms: [windows]
+        if: powershell -NoProfile -Command "Get-Command optipng -ErrorAction SilentlyContinue | Out-Null"
+
+  spritesheet:webp:
+    desc: Generate a WebP spritesheet using the images in the images directory.
+    deps: [output]
+    cmds:
+      - go run cmd/spritesheet/main.go -format webp
 
   scss:
     desc: Generate a .scss file for the generated spritesheet using the filenames of the source images.
     deps: [output]
     cmds:
       - go run cmd/scss/main.go
+
+  css:
+    desc: Generate a plain .css file with sprite position rules (includes --w/--h custom properties for CSS-only scaling).
+    deps: [output]
+    cmds:
+      - go run cmd/css/main.go
 
   positions:
     desc: Generate a TypeScript sprite-positions file from the SCSS file.
@@ -67,16 +88,22 @@ tasks:
   clean:
     desc: Deletes the output directory.
     cmds:
-      - rm -rf output
-    status:
-      - '! test -d output'
+      - cmd: powershell -NoProfile -Command "Remove-Item -Recurse -Force output"
+        platforms: [windows]
+        if: powershell -NoProfile -Command "if (Test-Path output) { exit 0 } else { exit 1 }"
+      - cmd: rm -rf output
+        platforms: [linux, darwin]
+        if: test -d output
 
   output:
     desc: Ensures that the output directory exists.
     cmds:
-      - mkdir output
-    status:
-      - test -d output
+      - cmd: powershell -NoProfile -Command "New-Item -ItemType Directory -Force output | Out-Null"
+        platforms: [windows]
+        if: powershell -NoProfile -Command "if (Test-Path output) { exit 1 } else { exit 0 }"
+      - cmd: mkdir -p output
+        platforms: [linux, darwin]
+        if: test ! -d output
 
   setup:
     desc: Install necessary dependencies.

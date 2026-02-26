@@ -38,9 +38,18 @@ task chop -- data.json
 task scale
 task trim
 task spritesheet
+task spritesheet:webp
 task scss
 task positions
 ```
+
+To generate a WebP spritesheet instead of the default PNG:
+
+```sh
+task spritesheet:webp
+```
+
+Note: WebP generation requires `cwebp` (from libwebp) to be available in your `PATH`.
 
 There's also a `build` task that runs `trim`, `spritesheet`, `scss`, and `positions` in sequence:
 
@@ -61,7 +70,7 @@ You can find instructions on how to install it
 ### Go
 
 To have everything working as expected, you need to have a module-aware version
-of Go installed (v1.11 or greater) and `pngcrush`.
+of Go installed (v1.11 or greater), `cwebp`, and `optipng`.
 
 To install Go, you can do it any way you prefer. We recommend using
 [`goenv`](https://github.com/syndbg/goenv) so that you can use the correct
@@ -83,11 +92,16 @@ install the correct version of Go:
 goenv install
 ```
 
-### `pngcrush`
+### `cwebp`
 
-`pngcrush` is required for the `spritesheet` command. To install it, you can
+`cwebp` is required for the `spritesheet:webp` task. To install it, you can
 just run the following command:
 
 ```sh
 task setup
 ```
+
+### `optipng`
+
+`optipng` is used by the `spritesheet` and `spritesheet:png` tasks to optimize
+the generated PNG output.

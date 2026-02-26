@@ -5,18 +5,23 @@
 // the first row, and then put all Pokemon on subsequent rows. The `height` and
 // `width` variables should be the max height and width possible. If a new
 // generate produces larger sprites, you should update those values. While this
-// script produces a PNG with the best compression, it's still recommended to
-// use `pngcrush` to get it even smaller.
+// script produces a PNG with the best compression by default. You can choose
+// WebP output with `-format webp`.
 package main
 
 import (
+	"flag"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
 	"math"
 	"os"
+	"os/exec"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/pokedextracker/pokesprite/pkg/size"
 	"github.com/pokedextracker/pokesprite/pkg/sorter"
@@ -27,11 +32,15 @@ const (
 )
 
 var (
-	height = 0
-	width  = 0
+	height          = 0
+	width           = 0
+	progressLineLen = 0
 )
 
 func main() {
+	format := flag.String("format", "png", "output format: png or webp")
+	flag.Parse()
+
 	files, err := ioutil.ReadDir("./images")
 	if err != nil {
 		panic(err)
@@ -49,10 +58,16 @@ func main() {
 	rgba := image.NewRGBA(r)
 
 	// Draw the love ball on its own row.
+	totalToDraw := len(files)
+	drawn := 0
+	printProgress(drawn, totalToDraw, "starting")
+
 	err = drawImage(rgba, "love-ball.png", 0, 0)
 	if err != nil {
 		panic(err)
 	}
+	drawn++
+	printProgress(drawn, totalToDraw, "love-ball.png")
 
 	// Sort files alphabetically.
 	sort.Sort(sorter.New(files))
@@ -71,18 +86,123 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		drawn++
+		printProgress(drawn, totalToDraw, name)
+	}
+	fmt.Println()
+
+	outputPath := getOutputPath(*format)
+	fmt.Printf("Preparing to encode %s\n", outputPath)
+
+	switch strings.ToLower(*format) {
+	case "png":
+		err = withSpinner("Encoding PNG", func() error {
+			out, err := os.Create(outputPath)
+			if err != nil {
+				return err
+			}
+			defer out.Close()
+
+			encoder := png.Encoder{CompressionLevel: png.BestCompression}
+			return encoder.Encode(out, rgba)
+		})
+	case "webp":
+		err = encodeWebP(rgba, outputPath)
+	default:
+		err = fmt.Errorf("unsupported format %q, expected png or webp", *format)
 	}
 
-	// Write the output png to a file.
-	out, err := os.Create("./output/pokesprite.png")
 	if err != nil {
 		panic(err)
 	}
-	defer out.Close()
-	encoder := png.Encoder{CompressionLevel: png.BestCompression}
-	err = encoder.Encode(out, rgba)
+}
+
+func getOutputPath(format string) string {
+	switch strings.ToLower(format) {
+	case "webp":
+		return "./output/pokesprite.webp"
+	default:
+		return "./output/pokesprite.png"
+	}
+}
+
+func encodeWebP(rgba image.Image, outputPath string) error {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		return fmt.Errorf("cwebp not found in PATH; install libwebp/cwebp to enable -format webp")
+	}
+
+	// cwebp only accepts image files as input, so encode a temporary PNG first.
+	tempPNG, err := os.CreateTemp("./output", "pokesprite-*.png")
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	tempPath := tempPNG.Name()
+	defer os.Remove(tempPath)
+
+	encoder := png.Encoder{CompressionLevel: png.BestCompression}
+	if err := encoder.Encode(tempPNG, rgba); err != nil {
+		tempPNG.Close()
+		return err
+	}
+	if err := tempPNG.Close(); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("cwebp", "-lossless", "-z", "9", "-progress", tempPath, "-o", outputPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := withSpinner("Encoding WebP", cmd.Run); err != nil {
+		return fmt.Errorf("cwebp failed: %w", err)
+	}
+
+	return nil
+}
+
+func printProgress(current, total int, name string) {
+	if total <= 0 {
+		return
+	}
+	percent := int(math.Round((float64(current) / float64(total)) * 100))
+	if percent > 100 {
+		percent = 100
+	}
+	line := fmt.Sprintf("Drawing sprites: %d/%d (%d%%) - %s", current, total, percent, name)
+	if len(line) < progressLineLen {
+		line += strings.Repeat(" ", progressLineLen-len(line))
+	}
+	progressLineLen = len(line)
+	fmt.Printf("\r%s", line)
+}
+
+func withSpinner(label string, fn func() error) error {
+	done := make(chan error, 1)
+	start := time.Now()
+	frames := []string{"|", "/", "-", "\\"}
+
+	go func() {
+		done <- fn()
+	}()
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+	i := 0
+
+	for {
+		select {
+		case err := <-done:
+			elapsed := time.Since(start).Round(time.Second)
+			if err != nil {
+				fmt.Printf("\r%s failed (%s)                        \n", label, elapsed)
+				return err
+			}
+			fmt.Printf("\r%s complete (%s)                      \n", label, elapsed)
+			return nil
+		case <-ticker.C:
+			elapsed := time.Since(start).Round(time.Second)
+			fmt.Printf("\r%s %s (%s)", label, frames[i%len(frames)], elapsed)
+			i++
+		}
 	}
 }
 
